@@ -1,0 +1,5 @@
+person
+fan_on
+fan_off
+light_on
+light_off

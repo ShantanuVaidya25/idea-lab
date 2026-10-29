@@ -1,0 +1,119 @@
+# ============================================================
+# Smart Classroom Electricity Management - Configuration
+# Edit this file, then restart the dashboard.
+# ============================================================
+
+esp32:
+  # Leave port empty ("") to run in SIMULATION mode (no ESP32 needed).
+  # Example on Windows: "COM5"  (find it with: python tools/list_ports.py)
+  port: ""
+  baud: 115200
+  telemetry_timeout_s: 15      # no data for this long -> ESP32 marked disconnected (sensors report every 5 s)
+
+vision:
+  simulate: false              # true = no camera/YOLO, person count set from dashboard
+  source: 0                    # webcam index (0, 1, ...) or a video file / RTSP URL
+  model_path: "yolov8n.pt"     # put YOUR trained model path here, e.g. "models/best.pt"
+  confidence: 0.28             # lower threshold (0.28 vs 0.45) detects partially occluded and seated people
+  inference_interval_s: 0.2    # run YOLO every N seconds
+  imgsz: 320                   # 320x320 runs 35x faster on CPU (~0.14s vs 5.0s at 640)
+  exposure: "auto"             # "auto" lets webcam adjust brightness naturally
+  exposure_range: [-8, -1]
+  exposure_target: [70, 150]
+  # Areas (x1, y1, x2, y2 in the 640x480 picture) where 'person' detections are ignored:
+  ignore_person_zones: []      # cleared so real people are not ignored
+  device: "auto"               # "auto", "cpu" or "cuda"
+  # Names that count as each logical class (matched against model.names, case-insensitive)
+  class_aliases:
+    person: ["person"]
+    fan: ["fan", "ceiling fan", "ceiling_fan", "electric fan"]
+    light: ["light", "lamp", "tube light", "tubelight", "bulb", "light_on"]
+  # Fan / light detection + visual ON/OFF. If your model above has no fan/light class, an open-vocabulary
+  # YOLO-World model (auto-downloaded from ultralytics' GitHub releases) finds them from the text prompts.
+  appliances:
+    enabled: true
+    model_path: "yolov8s-worldv2.pt"
+    prompts:
+      fan: ["ceiling fan", "fan", "electric fan", "table fan"]
+      light: ["tube light", "light bulb", "lamp"]
+    fan_confidence: 0.18       # lower confidence threshold so ceiling fans are picked up
+    light_confidence: 0.20
+    fan_min_size: 0.01         # allow smaller fan boxes in the distance
+    light_min_size: 0.002
+    max_size: 0.6
+    confirm_hits: 1            # show on 1 pass instead of needing 2 passes in a row
+    zones_path: "data/zones.json"   # saved fan/light positions + calibration (see dashboard: Calibrate)
+    ignore_light_inside_fan: true
+    unlit_lamp_is_fan: true    # a hanging "lamp" that does not glow = a spinning fan's housing (blades blurred away)
+    drop_unlit_lamps: true     # an unlit 'lamp' guess that isn't a hanging fixture is ignored (lit lights are found by glow)
+    glow_lights: true          # find LIT lights by brightness (the model can't see a lit panel, it's just glare)
+    glow_region_top: 0.6       # only look for lights in the top 60 % of the picture (ceiling / upper walls)
+    glow_min_level: 215        # brightness 0-255 a light must reach ...
+    glow_min_lift: 35          # ... and how much brighter than its surroundings   # a fan's motor housing is not a separate light
+    interval_s: 2.0            # how often the finder runs (fans/lights don't move)
+    fan_motion_ratio: 0.08     # fan is ON if more than 8% of its box pixels changed vs ~0.4 s earlier
+    fan_lag_s: 0.4
+    light_saturated_ratio: 0.08  # light is ON if >8% of its box is blown-out white ...
+    light_peak: 240            # ... or its brightest 5% is this bright AND it stands out from the surroundings
+    light_contrast: 25         # a lit light must be this much brighter than the area around it
+    state_window_s: 2.0        # decide ON/OFF from the last N seconds of video
+  # 4 virtual regions as fractions of the frame [x1, y1, x2, y2]
+  regions:
+    Region 1: [0.0, 0.0, 0.5, 0.5]
+    Region 2: [0.5, 0.0, 1.0, 0.5]
+    Region 3: [0.0, 0.5, 0.5, 1.0]
+    Region 4: [0.5, 0.5, 1.0, 1.0]
+
+occupancy:
+  vacancy_confirm_frames: 20   # report 3.4: zero people in this many CONSECUTIVE frames -> VACANT (~10 s)
+  vacancy_confirm_s: 10        # ... and for at least this long
+  occupied_confirm_frames: 2   # person must be seen in N consecutive checks
+  detection_fail_timeout_s: 30 # no valid detection for this long -> ERROR (no switching)
+
+ac_monitor:                    # continuous AC ON/OFF detection from the DHT11 temperature trend
+  window_s: 180                # look at the last 3 minutes of readings
+  on_drop_c: 1.0               # AC ON  = room cooled at least 1 C over the window ...
+  on_slope_c_min: -0.25        # ... and is still cooling at least 0.25 C per minute
+  off_rise_c: 1.0              # AC OFF = room warmed back 1 C from its lowest point ...
+  off_slope_c_min: 0.1         # ... and is warming at least 0.1 C per minute
+
+ac_inference:
+  observation_s: 120           # report 3.4: post-vacancy timer Tvac = dt = 2 minutes
+  delta_mode: "absolute"       # report formula dT_i = |T_i,final - T_i,init|; "signed" = only cooling counts
+  delta_threshold_c: 1.0       # report delta_thresh: AC active if the mean regional dT is above this
+  cooling_threshold_c: 1.0     # delta_T <= -1.0  -> COOLING_OBSERVED  (DHT11 = 1 C resolution)
+  warming_threshold_c: 1.0     # delta_T >= +1.0  -> NO_SIGNIFICANT_COOLING_OBSERVED, else INCONCLUSIVE
+
+automation:
+  enabled: false               # SAFETY: automation is OFF until you turn it on in the dashboard
+  min_switch_interval_s: 10    # minimum gap between two switches of the same relay
+  off_after_vacant_s: 60       # automation switches loads off only after the room has been VACANT this long
+
+# Relays (channel 1..4 -> GPIO 17, 5, 18, 19 in firmware)
+# auto: true  -> switched OFF automatically when room is VACANT
+# occupied_state: state to restore when room becomes occupied again
+relays:
+  1: {name: "Light 1", kind: "light", auto: true,  occupied_state: 1, watts: 40}
+  2: {name: "Light 2", kind: "light", auto: true,  occupied_state: 1, watts: 40}
+  3: {name: "Fan",     kind: "fan",   auto: true,  occupied_state: 1, watts: 75}
+  4: {name: "AC (demo LED)", kind: "ac", auto: false, occupied_state: 0, watts: 1500}  # AC is never auto-switched
+
+alerts:
+  cooldown_s: 300              # same alert is not repeated within this time
+  high_temp_c: 35
+  visual_waste_delay_s: 8      # camera sees fan/light ON and nobody for this long -> alert (no alert while someone is there)
+  notify_only: [VISUAL_ENERGY_WASTE, ENERGY_WASTE, AC_LEFT_ON, AC_ON, AC_OFF]   # ONLY these 'turn OFF' alerts send a popup / phone message
+  desktop_popup: true          # Windows notification popup (needs 'plyer')
+  telegram:
+    enabled: false             # mobile push notification - see README "Telegram alerts"
+    bot_token: ""
+    chat_id: ""
+    min_level: "WARNING"       # send only WARNING and CRITICAL to phone
+
+analysis:
+  tariff_per_kwh: 8.0         # electricity price used for cost estimates
+  currency: "INR"
+
+logging:
+  db_path: "data/classroom_log.db"
+  log_interval_s: 5

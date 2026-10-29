@@ -1,0 +1,10 @@
+ultralytics>=8.1
+opencv-python>=4.8
+streamlit>=1.37
+pandas
+numpy
+pyserial>=3.5
+pyyaml
+requests
+plyer
+pytest

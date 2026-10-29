@@ -1,0 +1,81 @@
+{
+ "ts": 1792820979.6538048,
+ "width": 640,
+ "height": 480,
+ "persons": [
+  [
+   0,
+   15,
+   201,
+   479,
+   0.559
+  ]
+ ],
+ "appliances": [
+  {
+   "id": 3,
+   "cls": "light",
+   "state": "ON",
+   "conf": 0.9,
+   "bbox": [
+    533,
+    56,
+    574,
+    98
+   ],
+   "metric": 1.0
+  },
+  {
+   "id": 4,
+   "cls": "light",
+   "state": "ON",
+   "conf": 0.9,
+   "bbox": [
+    444,
+    119,
+    492,
+    165
+   ],
+   "metric": 1.0
+  },
+  {
+   "id": 10,
+   "cls": "light",
+   "state": "OFF",
+   "conf": 0.9,
+   "bbox": [
+    629,
+    6,
+    640,
+    25
+   ],
+   "metric": 0.103
+  },
+  {
+   "id": 5,
+   "cls": "light",
+   "state": "ON",
+   "conf": 0.9,
+   "bbox": [
+    378,
+    172,
+    489,
+    278
+   ],
+   "metric": 0.872
+  },
+  {
+   "id": 11,
+   "cls": "light",
+   "state": "ON",
+   "conf": 0.9,
+   "bbox": [
+    151,
+    87,
+    203,
+    133
+   ],
+   "metric": 1.0
+  }
+ ]
+}

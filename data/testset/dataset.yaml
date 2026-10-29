@@ -1,0 +1,8 @@
+path: C:/Users/shant/Downloads/idea lab/SmartClassroom/SmartClassroom/data/testset
+test: images
+names:
+  0: person
+  1: fan_on
+  2: fan_off
+  3: light_on
+  4: light_off
